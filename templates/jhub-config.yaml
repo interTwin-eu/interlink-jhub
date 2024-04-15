@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+    name: jhub-config
+data:
+  jupyterhubcustomconfig.py: |
+{{ .Files.Get "jhub/jupyterhubcustomconfig.py" | indent 4 }}

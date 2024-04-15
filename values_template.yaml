@@ -1,0 +1,141 @@
+persistentVolume:
+  jhubVolume:
+    name: helm-jhub-volume
+    path: /mnt/data/helm-jhub-volume
+    type: local
+
+services:
+  sshFwd:
+    name: ssh-fwd
+    type: NodePort
+    port: 8022
+    nodePort: 31022
+    protocol: TCP
+    release: __RELEASE__
+
+hostname: __JHUB_HOSTNAME__
+ingress: false 
+jupyterhub:
+  cull:
+    enabled: true 
+  hub:
+    db:
+      type: sqlite-pvc
+      upgrade:
+      pvc:
+        annotations: {}
+        selector: {}
+        accessModes:
+          - ReadWriteOnce
+        storage: 1Gi
+        subPath:
+        storageClassName: local-storage
+    extraContainers:
+      - image: redis:6.2.5
+        imagePullPolicy: IfNotPresent
+        name: redis
+        resources:
+            limits:
+                cpu: '1'
+                memory: 1G
+            requests:
+                cpu: 900m
+                memory: 900M
+        terminationMessagePath: "/dev/termination-log"
+        terminationMessagePolicy: File
+      - env:
+        - name: JHUB_URL
+          value: __JHUB_URL__
+        image: ghcr.io/comp-dev-cms-ita/ssh-forwarder:v0.0.3
+        imagePullPolicy: Always
+        name: ssh-fwd
+        resources:
+          limits:
+            cpu: '1'
+            memory: 1G
+          requests:
+            cpu: 900m
+            memory: 900M
+        terminationMessagePath: "/dev/termination-log"
+        terminationMessagePolicy: File
+      - env:
+        - name: JHUB_URL
+          value: __JHUB_URL__
+        image: ghcr.io/comp-dev-cms-ita/ssh-listener:v0.0.3
+        imagePullPolicy: Always
+        name: listener
+        resources:
+          limits:
+            cpu: '1'
+            memory: 1G
+          requests:
+            cpu: 900m
+            memory: 900M
+        terminationMessagePath: "/dev/termination-log"
+        terminationMessagePolicy: File
+    image:
+      name: biancoj/jhub-ai-infn
+      tag: latest
+    networkPolicy:
+      enabled: false
+    cookieSecret: __COOKIE_SECRET__
+    extraVolumes:
+      - name: jhub-config
+        configMap:
+          name: jhub-config
+          items:
+           - key: jupyterhubcustomconfig.py
+             path: jupyterhubcustomconfig.py
+    extraVolumeMounts:  
+      - name: jhub-config
+        mountPath: /usr/local/etc/jupyterhub/jupyterhub_config.d/
+    extraConfig:
+        00-first-config: |
+          config_py = open('/usr/local/etc/jupyterhub/jupyterhub_config.d/jupyterhubcustomconfig.py').read()
+          exec(config_py)
+    args:
+    - jupyterhub
+    - --config
+    - /usr/local/etc/jupyterhub/jupyterhub_config.py
+    - --upgrade-db
+    extraEnv:
+      ACCESS_TOKEN: eyJraWQiOiJyc2ExIiwiYWxnIjoiUlMyNTYifQ.eyJzdWIiOiIxZTcwNzRlNS05NmZlLTQzZTgtODgxZC00ZDU3MmMxMjg5MzEiLCJpc3MiOiJodHRwczpcL1wvZG9kYXMtaWFtLmNsb3VkLmNuYWYuaW5mbi5pdFwvIiwiZ3JvdXBzIjpbInVzZXJzIiwibWxhYXMiLCJBTVMiLCJDTVMiLCJqdXB5dGVyLXRlc3Rlci1hZG1pbiJdLCJwcmVmZXJyZWRfdXNlcm5hbWUiOiJkY2lhbmdvdCIsIm9yZ2FuaXNhdGlvbl9uYW1lIjoiZG9kYXMiLCJjbGllbnRfaWQiOiJvaWRjLWRjaWFuZ290LWRlc2t0b3AiLCJuYmYiOjE2MzI0MjM5NDksInNjb3BlIjoiYWRkcmVzcyBwaG9uZSBvcGVuaWQgb2ZmbGluZV9hY2Nlc3MgcHJvZmlsZSBlbWFpbCIsIm5hbWUiOiJEaWVnbyBDaWFuZ290dGluaSIsImV4cCI6MTYzMjQyNzU0OSwiaWF0IjoxNjMyNDIzOTQ5LCJqdGkiOiI0MTM2OGU2NS0wYWYxLTQ1YzctYWIzOS00NTVhOGJjMjUxMjAiLCJlbWFpbCI6ImRpZWdvLmNpYW5nb3R0aW5pQHBnLmluZm4uaXQifQ.EY0RVhdvpO0xeJ3lT33jQ_kt9i92UMZdgpinyEaxB4z-5HTmLoj1QKTZBrQmwtw_KRtIswdWlwfIMdaO5J5iw8rZChmN_5Qx9FBDTrjhWABaBORg1_ioTiBP9WpRgBZJlMcX2DzjFb7JNiDmKuEI6BCgU_O8V41GHXHPgGWAKGs
+      OAUTH_CALLBACK_URL: __CALLBACK_URL__
+      OAUTH_ENDPOINT: __IAM_SERVER__
+      OAUTH_GROUPS: users
+      SSH_NAMESPACE: __NAMESPACE__
+      TUNNEL_SERVICE_PORT: "31022"
+      JUPYTERHUB_CRYPT_KEY: "4145ad1272fef975ae88bf90bb55471dcb211d7974c327a2a0e78b0b0d4e4452"
+    networkPolicy:
+      enabled: false
+  ingress:
+    enabled: false 
+  proxy:
+    service:
+      type: ClusterIP
+    chp:
+      networkPolicy:
+        enabled: false
+    secretToken: __COOKIE_SECRET__
+  scheduling:
+    podPriority:
+      enabled: false
+    userPlaceholder:
+      enabled: false
+    userScheduler:
+      enabled: false
+  prePuller:
+    extraImages:
+      ml:
+       name: ghcr.io/dodas-ts/htc-dask-wn
+       tag: v1.0.6-ml-infn-ssh-v5
+  singleuser:
+    storage:
+      type: none
+      dynamic:
+        storageClass: null
+        pvcNameTemplate: null
+        volumeNameTemplate: null
+    startTimeout: 600
+    networkPolicy:
+      enabled: false

@@ -1,43 +1,12 @@
-# Template for interTwin repositories
+# Helm chart to deploy JupyterHub on Kubernetes with InterLink
 
-This repository is to be used as a repository template for creating a new interTwin
-repository, and is aiming at being a clean basis promoting currently accepted
-good practices.
+<p align="center">
+  <img src="./images/jhub-elm.png" width="300" height="auto">
+</p>
 
-It includes:
+This chart is in **alpha** state. It is not yet feature complete and it is considered experimental. 
+A lot of features are missing and we are working to improve it, but it is already possible to deploy a JupyterHub on Kubernetes using this Helm chart.
 
-- License information
-- Copyright and author information
-- Code of conduct and contribution guidelines
-- Templates for PR and issues
-- Code owners file for automatic assignment of PR reviewers
-- [GitHub actions](https://github.com/features/actions) workflows for linting
-  and checking links
+# How to use it
 
-Content is based on:
-
-- [Contributor Covenant](http://contributor-covenant.org)
-- [Semantic Versioning](https://semver.org/)
-- [Chef Cookbook Contributing Guide](https://github.com/chef-cookbooks/community_cookbook_documentation/blob/master/CONTRIBUTING.MD)
-
-## GitHub repository management rules
-
-All changes should go through Pull Requests.
-
-### Merge management
-
-- Only squash should be enforced in the repository settings.
-- Update commit message for the squashed commits as needed.
-
-### Protection on main branch
-
-To be configured on the repository settings.
-
-- Require pull request reviews before merging
-  - Dismiss stale pull request approvals when new commits are pushed
-  - Require review from Code Owners
-- Require status checks to pass before merging
-  - GitHub actions if available
-  - Other checks as available and relevant
-  - Require branches to be up to date before merging
-- Include administrators
+## to do...

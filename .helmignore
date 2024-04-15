@@ -1,0 +1,13 @@
+# Match any file or path named .helmignore
+.helmignore
+# Match any file or path named .git
+.git
+
+# Match any text file
+*.txt
+
+# Ignore images folder
+images/
+
+# Ignore the readme
+README.md

@@ -1,0 +1,14 @@
+apiVersion: v1 
+kind: Service 
+metadata:
+  name: {{ .Values.services.sshFwd.name }} 
+spec:
+  type: NodePort 
+  ports:
+    - port: {{ .Values.services.sshFwd.port }} 
+      nodePort: {{ .Values.services.sshFwd.nodePort }}
+      protocol: {{ .Values.services.sshFwd.protocol }}
+  selector:
+    app: jupyterhub
+    component: hub
+    release: {{ .Values.services.sshFwd.release }}
