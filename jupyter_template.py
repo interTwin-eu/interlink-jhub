@@ -160,6 +160,7 @@ c.GenericOAuthenticator.enable_auth_state = True
 class CustomSpawner(kubespawner.KubeSpawner):
 
     def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self.map_node_gpu = {}
 
     def get_args(self):
@@ -237,8 +238,7 @@ class CustomSpawner(kubespawner.KubeSpawner):
         vk_nodes = [node for node in nodes if node.metadata.labels.get('type') == 'virtual-kubelet']
 
         nodes_labels = []
-        nodes_hostnames = []
-
+        
         available_gpus = 0
         for node in vk_nodes:
             # append the node label to the list nodes_labels
@@ -395,13 +395,7 @@ class CustomSpawner(kubespawner.KubeSpawner):
                             "beta.kubernetes.io/os": "linux",
                             "type" : "virtual-kubelet"}
 
-
-        if self.user_options.get('offload')=="T4": # WIP: this should be modify based on the annotations, for example instead of 'vkgpu' should be 'T4' also the hostname should be the name of the node
-            # get from self.map_node_gpu the hostname of the node with the T4 accelerator
-            node_selector.update({"kubernetes.io/hostname" : self.map_node_gpu["T4"]["hostname"]})
-        elif self.user_options.get('offload')=="none":
-            # get from self.map_node_gpu the hostname of the node with the 'none' accelerator
-            node_selector.update({"kubernetes.io/hostname" : self.map_node_gpu["none"]["hostname"]})
+        node_selector.update({"kubernetes.io/hostname" : self.map_node_gpu[self.user_options.get('offload')]["hostname"]})
 
         if self.user_options.get('offload')=="N":
             node_selector = {}
@@ -455,6 +449,6 @@ c.KubeSpawner.extra_container_config = {
         }
 }
 
-c.KubeSpawner.http_timeout = 30
-c.KubeSpawner.start_timeout = 30
+c.KubeSpawner.http_timeout = 60
+c.KubeSpawner.start_timeout = 60
 c.KubeSpawner.notebook_dir = "/home/jovyan"

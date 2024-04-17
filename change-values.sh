@@ -40,4 +40,9 @@ sed -i "s|__CALLBACK_URL__|\"$CALLBACK_URL\"|g" values.yaml
 sed -i "s|__IAM_SERVER__|\"$IAM_SERVER\"|g" values.yaml
 sed -i "s|__COOKIE_SECRET__|$COOKIE_SECRET|g" values.yaml
 
+# check if jhub folder exists, if not create it
+if [ ! -d "jhub" ]; then
+  mkdir jhub
+fi
+
 mv jupyterhubcustomconfig.py jhub/jupyterhubcustomconfig.py
