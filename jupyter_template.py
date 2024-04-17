@@ -159,6 +159,9 @@ c.GenericOAuthenticator.enable_auth_state = True
 
 class CustomSpawner(kubespawner.KubeSpawner):
 
+    def __init__(self, *args, **kwargs):
+        self.map_node_gpu = {}
+
     def get_args(self):
         # Get the default arguments
         args = super().get_args()
@@ -234,12 +237,18 @@ class CustomSpawner(kubespawner.KubeSpawner):
         vk_nodes = [node for node in nodes if node.metadata.labels.get('type') == 'virtual-kubelet']
 
         nodes_labels = []
+        nodes_hostnames = []
 
         available_gpus = 0
         for node in vk_nodes:
             # append the node label to the list nodes_labels
             nodes_labels.append(node.metadata.labels.get('accelerator', ''))
             available_gpus += int(node.status.capacity.get('nvidia.com/gpu', 0))
+
+            if node.metadata.labels.get('accelerator', '') == "T4":
+                self.map_node_gpu[node.metadata.labels.get('accelerator', '')] = { "hostname": node.metadata.name, "gpus": int(node.status.capacity.get('nvidia.com/gpu', 0))}
+            elif node.metadata.labels.get('accelerator', '') == "none":
+                self.map_node_gpu[node.metadata.labels.get('accelerator', '')] = { "hostname": node.metadata.name, "gpus": 0}
         
         options_to_return += '<p><b>GPU Offloading Options</b></p>'
         allocatable_gpus = 0
@@ -261,15 +270,13 @@ class CustomSpawner(kubespawner.KubeSpawner):
         else:
             options_to_return += f"<p>Unused GPUs: <b>0</b></p>"
 
-        if unused_gpus > 0:
-            options_to_return += '<label for="offload">Enable Offloading to:</label>'
-            options_to_return += '<select name="offload" size="1">'
-            options_to_return += '<option value="N">No</option>'
-            for label in nodes_labels:
-                options_to_return += f'<option value="{label}">{label}</option>'
-        else:
-            if allocatable_gpus > 0:
-                options_to_return += '<p><b>You cannot use a GPU because someone else is using it</b></p>'
+        options_to_return += '<label for="offload">Enable Offloading to:</label>'
+        options_to_return += '<select name="offload" size="1">'
+        for label in nodes_labels:
+            options_to_return += f'<option value="{label}">{label}</option>'
+            
+        if allocatable_gpus > 0:
+            options_to_return += '<p><b>You cannot use a GPU because someone else is using it</b></p>'
 
         options_to_return += '</select><br>'
 
@@ -316,7 +323,7 @@ class CustomSpawner(kubespawner.KubeSpawner):
             ]
             self.extra_resource_guarantees = {"nvidia.com/gpu": "1"}
             self.extra_resource_limits = {"nvidia.com/gpu": "1"}
-        elif options['offload'] == 'NO': # even if the user select 'NO' we need to add the toleration for the virtual-kubelet and explicit the 'none' accelerator. Probably the virtual-node.interlink/no-schedule should be removed
+        elif options['offload'] == 'NO' or options['offload'] == 'none': # even if the user select 'NO' we need to add the toleration for the virtual-kubelet and explicit the 'none' accelerator. Probably the virtual-node.interlink/no-schedule should be removed
             self.tolerations = [
                 {
                     "key": "accelerator",
@@ -388,8 +395,13 @@ class CustomSpawner(kubespawner.KubeSpawner):
                             "beta.kubernetes.io/os": "linux",
                             "type" : "virtual-kubelet"}
 
+
         if self.user_options.get('offload')=="T4": # WIP: this should be modify based on the annotations, for example instead of 'vkgpu' should be 'T4' also the hostname should be the name of the node
-            node_selector.update({"kubernetes.io/hostname" : __VK_NODENAME__})
+            # get from self.map_node_gpu the hostname of the node with the T4 accelerator
+            node_selector.update({"kubernetes.io/hostname" : self.map_node_gpu["T4"]["hostname"]})
+        elif self.user_options.get('offload')=="none":
+            # get from self.map_node_gpu the hostname of the node with the 'none' accelerator
+            node_selector.update({"kubernetes.io/hostname" : self.map_node_gpu["none"]["hostname"]})
 
         if self.user_options.get('offload')=="N":
             node_selector = {}
