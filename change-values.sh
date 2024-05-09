@@ -6,7 +6,7 @@ cp values_template.yaml values.yaml
 
 source .env
 
-HOSTNAME="jhub.131.154.99.26.myip.cloud.infn.it"
+HOSTNAME="jhub.131.154.98.62.myip.cloud.infn.it"
 
 # values inside jupyter_template.py
 IAM_SERVER="https://iam.cloud.infn.it"
@@ -14,7 +14,7 @@ CALLBACK_URL="https://$HOSTNAME:443/hub/oauth_callback"
 JHUB_HOST="$HOSTNAME"
 JHUB_PORT="443"
 JHUB_API_URL="https://$HOSTNAME/hub/api"
-VK_NODENAME='test-vk'
+VK_NODENAME='my-iam-node'
 
 sed -i "s|__CALLBACK_URL__|\"$CALLBACK_URL\"|g" jupyterhubcustomconfig.py
 sed -i "s|__IAM_SERVER__|\"$IAM_SERVER\"|g" jupyterhubcustomconfig.py

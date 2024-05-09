@@ -198,6 +198,15 @@ class CustomSpawner(kubespawner.KubeSpawner):
 
         return nodes.items
     
+    async def _get_pods(self):
+        k8s.config.load_incluster_config()
+
+        async with k8s.client.api_client.ApiClient() as api_client:
+            core = k8s.client.CoreV1Api(api_client)
+            pods = await core.list_pod_for_all_namespaces()
+        
+        return pods.items
+    
     def _options_form_default(self):
         options_to_return = """
         <label for="stack">Select your desired image:</label>
@@ -251,20 +260,29 @@ class CustomSpawner(kubespawner.KubeSpawner):
                 self.map_node_gpu[node.metadata.labels.get('accelerator', '')] = { "hostname": node.metadata.name, "gpus": 0}
         
         options_to_return += '<p><b>GPU Offloading Options</b></p>'
-        allocatable_gpus = 0
-        for node in vk_nodes:
-            allocatable_gpus += int(node.status.allocatable.get('nvidia.com/gpu', 0)) # WIP: here we should check the annotations, because the GPU type can be different, for example I can have a node with 2 T4 and another with 1 V100
+        already_allocated_gpus = 0
+
+        pods = asyncio.run(self._get_pods())
+        running_pods = [pod for pod in pods if pod.status.phase == "Running"]
+        #print("Running pods: ", len(running_pods))
+        for pod in running_pods:
+            try:
+                for container in pod.spec.containers:
+                    if container.resources and 'nvidia.com/gpu' in container.resources.limits:
+                            pprint.pprint(pod.metadata.name)
+                            already_allocated_gpus += int(container.resources.limits['nvidia.com/gpu'])
+            except Exception as e:
+                pass
 
         if available_gpus > 0:
             options_to_return += f"<p>Total GPUs available: <b style='color: darkgreen;'>{available_gpus}</b></p>"
 
-        used_gpus = available_gpus - allocatable_gpus
-        if used_gpus > 0:
-            options_to_return += f"<p>Used GPUs: <b style='color: darkred;'>{used_gpus}</b></p>"
+        if already_allocated_gpus > 0:
+            options_to_return += f"<p>Used GPUs: <b style='color: darkred;'>{already_allocated_gpus}</b></p>"
         else:
             options_to_return += f"<p>Used GPUs: <b>0</b></p>"
 
-        unused_gpus = available_gpus - used_gpus
+        unused_gpus = available_gpus - already_allocated_gpus
         if unused_gpus > 0:
             options_to_return += f"<p>Unused GPUs: <b>{unused_gpus}</b></p>"
         else:
@@ -275,7 +293,7 @@ class CustomSpawner(kubespawner.KubeSpawner):
         for label in nodes_labels:
             options_to_return += f'<option value="{label}">{label}</option>'
             
-        if allocatable_gpus > 0:
+        if already_allocated_gpus > 0:
             options_to_return += '<p><b>You cannot use a GPU because someone else is using it</b></p>'
 
         options_to_return += '</select><br>'
