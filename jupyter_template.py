@@ -162,6 +162,7 @@ class CustomSpawner(kubespawner.KubeSpawner):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.map_node_gpu = {}
+        self.gpus_status = {}
 
     def get_args(self):
         # Get the default arguments
@@ -256,6 +257,7 @@ class CustomSpawner(kubespawner.KubeSpawner):
 
             if node.metadata.labels.get('accelerator', '') == "T4":
                 self.map_node_gpu[node.metadata.labels.get('accelerator', '')] = { "hostname": node.metadata.name, "gpus": int(node.status.capacity.get('nvidia.com/gpu', 0))}
+                self.gpus_status[node.metadata.labels.get('accelerator', '')] = { 'total': int(node.status.capacity.get('nvidia.com/gpu', 0)), 'used': 0, 'available': int(node.status.capacity.get('nvidia.com/gpu', 0)) }
             elif node.metadata.labels.get('accelerator', '') == "none":
                 self.map_node_gpu[node.metadata.labels.get('accelerator', '')] = { "hostname": node.metadata.name, "gpus": 0}
         
@@ -269,10 +271,33 @@ class CustomSpawner(kubespawner.KubeSpawner):
             try:
                 for container in pod.spec.containers:
                     if container.resources and 'nvidia.com/gpu' in container.resources.limits:
-                            pprint.pprint(pod.metadata.name)
+                            # get the label of the node where the pod is running
+                            node_label = pod.spec.node_name
+                            # update the gpus_status dictionary with the new value
+                            self.gpus_status[node_label]["used"] += int(container.resources.limits['nvidia.com/gpu'])
+                            self.gpus_status[node_label]["available"] -= int(container.resources.limits['nvidia.com/gpu'])
                             already_allocated_gpus += int(container.resources.limits['nvidia.com/gpu'])
             except Exception as e:
                 pass
+        
+        if self.gpus_status:
+            options_to_return += '<table style="width:100%">'
+            options_to_return += '<tr>'
+            options_to_return += '<th>GPU Model</th>'
+            options_to_return += '<th>Total GPUs</th>'
+            options_to_return += '<th>Used GPUs</th>'
+            options_to_return += '<th>Available GPUs</th>'
+            options_to_return += '</tr>'
+            for key, value in self.gpus_status.items():
+                options_to_return += '<tr>'
+                options_to_return += f'<td>{key}</td>'
+                options_to_return += f'<td>{value["total"]}</td>'
+                options_to_return += f'<td>{value["used"]}</td>'
+                options_to_return += f'<td>{value["available"]}</td>'
+                options_to_return += '</tr>'
+            options_to_return += '</table>'
+
+        options_to_return += '<br>'
 
         if available_gpus > 0:
             options_to_return += f"<p>Total GPUs available: <b style='color: darkgreen;'>{available_gpus}</b></p>"
