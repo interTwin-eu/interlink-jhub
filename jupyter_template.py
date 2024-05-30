@@ -35,6 +35,7 @@ jhub_api_url = __JHUB_API_URL__
 
 cookie_secret_bytes = cookie_secret_str.encode('utf-8')
 os.environ["OAUTH_CALLBACK"] = callback_url
+os.environ['JUPYTERHUB_OAUTH_ACCESS_SCOPES'] = 'none'
 cache_file = './iam_secret'
 
 cache_results = {
@@ -163,6 +164,7 @@ class CustomSpawner(kubespawner.KubeSpawner):
         super().__init__(*args, **kwargs)
         self.map_node_gpu = {}
         self.gpus_status = {}
+        self.notebook_dir = ""
 
     def get_args(self):
         # Get the default arguments
@@ -172,17 +174,19 @@ class CustomSpawner(kubespawner.KubeSpawner):
                 "/opt/conda/bin/python3",
                 "/usr/local/bin/jupyterhub-singleuser"
             ])
-        elif self.image == "ghcr.io/dodas-ts/htc-dask-wn:v1.0.6-ml-infn-ssh-v5":
+            self.notebook_dir = "/home/jovyan"
+        else: #self.image == "ghcr.io/dodas-ts/htc-dask-wn:v1.0.6-ml-infn-ssh-v5":
             args.extend([
                 "/opt/ssh/jupyterhub-singleuser"
             ])
+            self.notebook_dir = "/jupyter-workspace"
 
         # Add custom arguments
         args.extend([
             "--ip=0.0.0.0",
             "--port="+str(self.port),
             "--SingleUserNotebookApp.default_url=/lab",
-            "--notebook-dir=/home/jovyan",
+            "--notebook-dir="+self.notebook_dir,
             "--debug",
             "--allow-root"
         ])
@@ -220,6 +224,10 @@ class CustomSpawner(kubespawner.KubeSpawner):
         <label for="option2">biancoj/jlab-ai</label><br>
         <a href="https://github.com/landerlini/ai-infn-platform/tree/main/docker" target="_blank">Source docker image (from ai-infn platform)</a>
         <br>
+        <input type="radio" id="option3" name="img" value="/cvmfs/datacloud.infn.it/test/jlab-ssh">
+        <label for="option3">/cvmfs/datacloud.infn.it/test/jlab-ssh</label><br>
+        <a href="https://github.com/DODAS-TS/dodas-docker-images" target="_blank">Source docker image from DODAS</a>
+        <br>
         <br>
         <label for="cpu">Select your desired number of cores:</label>
         <select name="cpu" size="1">
@@ -248,19 +256,23 @@ class CustomSpawner(kubespawner.KubeSpawner):
         vk_nodes = [node for node in nodes if node.metadata.labels.get('type') == 'virtual-kubelet']
 
         nodes_labels = []
-        
+        accelerator_labels = []
+
         available_gpus = 0
         for node in vk_nodes:
             # append the node label to the list nodes_labels
             nodes_labels.append(node.metadata.labels.get('accelerator', ''))
             available_gpus += int(node.status.capacity.get('nvidia.com/gpu', 0))
 
-            if node.metadata.labels.get('accelerator', '') == "T4":
+            if node.metadata.labels.get('accelerator', '') == "T4" or "A200" in node.metadata.labels.get('accelerator', ''):
+                if node.metadata.labels.get('accelerator', '') not in accelerator_labels:
+                    accelerator_labels.append(node.metadata.labels.get('accelerator', ''))
                 self.map_node_gpu[node.metadata.labels.get('accelerator', '')] = { "hostname": node.metadata.name, "gpus": int(node.status.capacity.get('nvidia.com/gpu', 0))}
                 self.gpus_status[node.metadata.labels.get('accelerator', '')] = { 'total': int(node.status.capacity.get('nvidia.com/gpu', 0)), 'used': 0, 'available': int(node.status.capacity.get('nvidia.com/gpu', 0)) }
             elif node.metadata.labels.get('accelerator', '') == "none":
                 self.map_node_gpu[node.metadata.labels.get('accelerator', '')] = { "hostname": node.metadata.name, "gpus": 0}
         
+        accelerator_labels.append("none")
         options_to_return += '<p><b>GPU Offloading Options</b></p>'
         already_allocated_gpus = 0
 
@@ -315,7 +327,7 @@ class CustomSpawner(kubespawner.KubeSpawner):
 
         options_to_return += '<label for="offload">Enable Offloading to:</label>'
         options_to_return += '<select name="offload" size="1">'
-        for label in nodes_labels:
+        for label in accelerator_labels:
             options_to_return += f'<option value="{label}">{label}</option>'
             
         if already_allocated_gpus > 0:
@@ -349,24 +361,7 @@ class CustomSpawner(kubespawner.KubeSpawner):
 
         self.port = sock.getsockname()[1]
 
-
-        if options['offload'] == 'T4': # WIP: this should be modify based on the annotations, for example instead of 'vkgpu' should be 'T4'
-            self.tolerations = [
-                {
-                    "key": "accelerator",
-                    "operator": "Equal",
-                    "value": "T4",
-                    "effect": "NoSchedule"
-                },
-                {
-                    "key": "virtual-node.interlink/no-schedule",
-                    "operator": "Exists",
-                    "effect": "NoSchedule"
-                }
-            ]
-            self.extra_resource_guarantees = {"nvidia.com/gpu": "1"}
-            self.extra_resource_limits = {"nvidia.com/gpu": "1"}
-        elif options['offload'] == 'NO' or options['offload'] == 'none': # even if the user select 'NO' we need to add the toleration for the virtual-kubelet and explicit the 'none' accelerator. Probably the virtual-node.interlink/no-schedule should be removed
+        if options['offload'] == 'NO' or options['offload'] == 'none': 
             self.tolerations = [
                 {
                     "key": "accelerator",
@@ -380,7 +375,26 @@ class CustomSpawner(kubespawner.KubeSpawner):
                     "effect": "NoSchedule"
                 }
             ]
-
+        else:
+            self.tolerations = [
+                {
+                    "key": "accelerator",
+                    "operator": "Equal",
+                    "value": options['offload'],
+                    "effect": "NoSchedule"
+                },
+                {
+                    "key": "virtual-node.interlink/no-schedule",
+                    "operator": "Exists",
+                    "effect": "NoSchedule"
+                }
+            ]
+            self.extra_resource_guarantees = {"nvidia.com/gpu": "1"}
+            self.extra_resource_limits = {"nvidia.com/gpu": "1"} # export SINGULARITY_USERNS=1
+        
+        if 'poc' in options['offload']:
+            self.extra_annotations = {"job.vk.io/pre-exec": "afuse_cvmfs2_helper && ls /cvmfs/datacloud.infn.it", "slurm-job.vk.io/flags": "-t 100 -A inf24_lhc_1 --gres=gpu:4 --reservation=test_cvmfs -p boost_usr_prod -w lrdn0241"}
+        
         self.services_enabled = True
         self.extra_labels = { "app": "jupyterhub",  "component": "hub", "release": "helm-jhub-release"}
 
@@ -394,9 +408,7 @@ class CustomSpawner(kubespawner.KubeSpawner):
         annotations = self._build_common_annotations(
             self._expand_all(self.extra_annotations)
         )
-
         from kubernetes_asyncio.client.models import ( V1ObjectMeta, V1Service, V1ServiceSpec, V1ServicePort)
-
         metadata = V1ObjectMeta(
             name=self.pod_name,
             annotations=annotations,
@@ -426,7 +438,11 @@ class CustomSpawner(kubespawner.KubeSpawner):
                 "FWD_PORT": f"{self.port}",
                 "JUPYTERHUB_API_URL": jhub_api_url,
                 "JUPYTERHUB_ACTIVITY_URL": f"{jhub_api_url}/users/{self.user.name}/activity",
-                "JUPYTERHUB_SERVICE_URL": jhub_host
+                "JUPYTERHUB_SERVICE_URL": f"http://0.0.0.0:{self.port}",
+                "JUPYTERHUB_SERVER_NAME": "development",
+                "JUPYTERHUB_HOST": f"https://{jhub_host}:{jhub_port}",
+                "JUPYTERHUB_OAUTH_ACCESS_SCOPES": "none",
+                "JUPYTERHUB_OAUTH_SCOPES": "none"
                 }
 
         return environment
@@ -447,29 +463,30 @@ class CustomSpawner(kubespawner.KubeSpawner):
 
     @property
     def volume_mounts(self):
-        return [
-            {
-                'name': f'{self.user.name}-volume',
-                'mountPath': '/home/jovyan'
-            },
-        ]
+       return [
+           {
+               'name': f'{self.user.name}-volume',
+               'mountPath': self.notebook_dir
+           },
+       ]
 
     @property
     def volumes(self):
-        return [
-            {
-                'name': f'{self.user.name}-volume',
-                'hostPath': {
-                    'path': '/opt/workspace/persistent-storage',
-                    'type': 'DirectoryOrCreate',
-                },
-            },
-        ]
+       return [
+           {
+               'name': f'{self.user.name}-volume',
+               'hostPath': {
+                   'path': '/opt/workspace/persistent-storage',
+                   'type': 'DirectoryOrCreate',
+               },
+           },
+       ]
 
 
 c.JupyterHub.spawner_class = CustomSpawner
 c.KubeSpawner.cmd = [" "]
 c.KubeSpawner.args = [" "]
+c.KubeSpawner.delete_stopped_pods = False
 c.KubeSpawner.privileged = True
 c.KubeSpawner.allow_privilege_escalation = True
 c.KubeSpawner.extra_pod_config = {
@@ -492,6 +509,6 @@ c.KubeSpawner.extra_container_config = {
         }
 }
 
-c.KubeSpawner.http_timeout = 60
-c.KubeSpawner.start_timeout = 60
-c.KubeSpawner.notebook_dir = "/home/jovyan"
+c.KubeSpawner.http_timeout = 300
+c.KubeSpawner.start_timeout = 300
+#c.KubeSpawner.notebook_dir = "/home/jovyan"
