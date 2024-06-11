@@ -174,12 +174,12 @@ class CustomSpawner(kubespawner.KubeSpawner):
                 "/opt/conda/bin/python3",
                 "/usr/local/bin/jupyterhub-singleuser"
             ])
-            self.notebook_dir = "/home/jovyan"
+            #self.notebook_dir = "/home/jovyan"
         else: #self.image == "ghcr.io/dodas-ts/htc-dask-wn:v1.0.6-ml-infn-ssh-v5":
             args.extend([
                 "/opt/ssh/jupyterhub-singleuser"
             ])
-            self.notebook_dir = "/jupyter-workspace"
+            #self.notebook_dir = "/jupyter-workspace"
 
         # Add custom arguments
         args.extend([
@@ -212,7 +212,12 @@ class CustomSpawner(kubespawner.KubeSpawner):
         
         return pods.items
     
-    def _options_form_default(self):
+    @property
+    def options_form(self):
+        # Dynamically generate the form
+        return self.generate_options_form()
+
+    def generate_options_form(self):
         options_to_return = """
         <label for="stack">Select your desired image:</label>
         <br>
@@ -226,6 +231,10 @@ class CustomSpawner(kubespawner.KubeSpawner):
         <br>
         <input type="radio" id="option3" name="img" value="/cvmfs/datacloud.infn.it/test/jlab-ssh">
         <label for="option3">/cvmfs/datacloud.infn.it/test/jlab-ssh</label><br>
+        <a href="https://github.com/DODAS-TS/dodas-docker-images" target="_blank">Source docker image from DODAS</a>
+        <br>
+        <input type="radio" id="option4" name="img" value="/cvmfs/unpacked.infn.it/harbor.cloud.infn.it/unpacked/htc-dask-wn:v1.0.6-ml-infn-ssh-v5">
+        <label for="option4">/cvmfs/unpacked.infn.it/harbor.cloud.infn.it/unpacked/htc-dask-wn:v1.0.6-ml-infn-ssh-v5</label><br>
         <a href="https://github.com/DODAS-TS/dodas-docker-images" target="_blank">Source docker image from DODAS</a>
         <br>
         <br>
@@ -251,6 +260,8 @@ class CustomSpawner(kubespawner.KubeSpawner):
         <br>
         """
 
+        options_to_return += '<p><b>GPU Offloading Options</b></p>'
+
         nest_asyncio.apply()
         nodes = asyncio.run(self._get_nodes())
         vk_nodes = [node for node in nodes if node.metadata.labels.get('type') == 'virtual-kubelet']
@@ -261,7 +272,7 @@ class CustomSpawner(kubespawner.KubeSpawner):
         available_gpus = 0
         for node in vk_nodes:
             # append the node label to the list nodes_labels
-            nodes_labels.append(node.metadata.labels.get('accelerator', ''))
+            nodes_labels.append({ "hostname": node.metadata.name, "label": node.metadata.labels.get('accelerator', '')})
             available_gpus += int(node.status.capacity.get('nvidia.com/gpu', 0))
 
             if node.metadata.labels.get('accelerator', '') == "T4" or "A200" in node.metadata.labels.get('accelerator', ''):
@@ -273,21 +284,20 @@ class CustomSpawner(kubespawner.KubeSpawner):
                 self.map_node_gpu[node.metadata.labels.get('accelerator', '')] = { "hostname": node.metadata.name, "gpus": 0}
         
         accelerator_labels.append("none")
-        options_to_return += '<p><b>GPU Offloading Options</b></p>'
         already_allocated_gpus = 0
 
         pods = asyncio.run(self._get_pods())
         running_pods = [pod for pod in pods if pod.status.phase == "Running"]
-        #print("Running pods: ", len(running_pods))
+        
         for pod in running_pods:
             try:
                 for container in pod.spec.containers:
                     if container.resources and 'nvidia.com/gpu' in container.resources.limits:
                             # get the label of the node where the pod is running
                             node_label = pod.spec.node_name
-                            # update the gpus_status dictionary with the new value
-                            self.gpus_status[node_label]["used"] += int(container.resources.limits['nvidia.com/gpu'])
-                            self.gpus_status[node_label]["available"] -= int(container.resources.limits['nvidia.com/gpu'])
+                            accelerator_of_node = [node["label"] for node in nodes_labels if node["hostname"] == node_label][0]
+                            self.gpus_status[accelerator_of_node]["used"] += int(container.resources.limits['nvidia.com/gpu'])
+                            self.gpus_status[accelerator_of_node]["available"] -= int(container.resources.limits['nvidia.com/gpu'])
                             already_allocated_gpus += int(container.resources.limits['nvidia.com/gpu'])
             except Exception as e:
                 pass
@@ -334,9 +344,17 @@ class CustomSpawner(kubespawner.KubeSpawner):
             options_to_return += '<p><b>You cannot use a GPU because someone else is using it</b></p>'
 
         options_to_return += '</select><br>'
+        
+        options_to_return += '<label for="gpu">Select your desired number of GPUs:</label>'
+        options_to_return += '<select name="gpu" size="1">'
+
+        for i in range(0, int(__GPU_CAP__)+1):
+            options_to_return += f'<option value="{i}">{i}</option>'
+
+        options_to_return += "</select><br>"
 
         return options_to_return
-
+    
     def options_from_form(self, formdata):
         options = {}
         options['img'] = formdata['img']
@@ -355,6 +373,9 @@ class CustomSpawner(kubespawner.KubeSpawner):
         self.mem_limit = memory
 
         options['offload'] =  ''.join(formdata['offload'])
+
+        options['gpu'] = formdata['gpu']
+        gpu = ''.join(formdata['gpu'])
 
         sock = socket.socket()
         sock.bind(('', 0))
@@ -389,14 +410,31 @@ class CustomSpawner(kubespawner.KubeSpawner):
                     "effect": "NoSchedule"
                 }
             ]
-            self.extra_resource_guarantees = {"nvidia.com/gpu": "1"}
-            self.extra_resource_limits = {"nvidia.com/gpu": "1"} # export SINGULARITY_USERNS=1
+            self.extra_resource_guarantees = {"nvidia.com/gpu": gpu}
+            self.extra_resource_limits = {"nvidia.com/gpu": gpu} 
         
         if 'poc' in options['offload']:
-            self.extra_annotations = {"job.vk.io/pre-exec": "afuse_cvmfs2_helper && ls /cvmfs/datacloud.infn.it", "slurm-job.vk.io/flags": "-t 100 -A inf24_lhc_1 --gres=gpu:4 --reservation=test_cvmfs -p boost_usr_prod -w lrdn0241"}
-        
+
+            pre_exec_value = f'afuse_cvmfs2_helper && ls /cvmfs/datacloud.infn.it && mkdir -p notebooks/{self.user.name}'
+            flags_value = f'-t 100 -A inf24_lhc_1 --gres=gpu:{gpu} --reservation=test_cvmfs -p boost_usr_prod -w lrdn0241'
+            
+            singularity_options = f'--no-home --bind notebooks/{self.user.name}:/home/{self.user.name}'
+
+            self.extra_annotations = {"job.vk.io/pre-exec": pre_exec_value, 
+                                      "slurm-job.vk.io/flags": flags_value,
+                                      "slurm-job.vk.io/singularity-options": singularity_options}
+
+            if 'unpacked' in self.image:
+                self.extra_annotations.update({"job.vk.io/pre-exec": f'export SINGULARITY_USERNS=1 && mkdir -p notebooks/{self.user.name} && afuse_cvmfs2_helper && ls /cvmfs/datacloud.infn.it'})
+                        
         self.services_enabled = True
         self.extra_labels = { "app": "jupyterhub",  "component": "hub", "release": "helm-jhub-release"}
+
+        if self.image == "biancoj/jlab-ai":
+            self.notebook_dir = "/home/jovyan"
+        else:
+            self.notebook_dir = "/jupyter-workspace"
+            #self.notebook_dir = f'/home/{self.user.name}'
 
         return options
 
@@ -427,6 +465,17 @@ class CustomSpawner(kubespawner.KubeSpawner):
         )
 
         return service
+    
+    async def custom_function(self):
+        print("Running custom function before starting the notebook server")
+        await asyncio.sleep(1)  # Simulating some async operation
+        
+    async def start(self):
+        # Run your custom function here
+        await self.custom_function()
+        
+        # Call the parent class's start method to actually start the notebook
+        return await super().start()
 
     @property
     def environment(self):
@@ -441,8 +490,8 @@ class CustomSpawner(kubespawner.KubeSpawner):
                 "JUPYTERHUB_SERVICE_URL": f"http://0.0.0.0:{self.port}",
                 "JUPYTERHUB_SERVER_NAME": "development",
                 "JUPYTERHUB_HOST": f"https://{jhub_host}:{jhub_port}",
-                "JUPYTERHUB_OAUTH_ACCESS_SCOPES": "none",
-                "JUPYTERHUB_OAUTH_SCOPES": "none"
+                "JUPYTERHUB_OAUTH_ACCESS_SCOPES": "none", # to understand if it is strictly necessary for slurm plugin to set this to none
+                "JUPYTERHUB_OAUTH_SCOPES": "none" # # to understand if it is strictly necessary for slurm plugin to set this to none
                 }
 
         return environment
@@ -476,7 +525,7 @@ class CustomSpawner(kubespawner.KubeSpawner):
            {
                'name': f'{self.user.name}-volume',
                'hostPath': {
-                   'path': '/opt/workspace/persistent-storage',
+                   'path': f'/opt/workspace/persistent-storage/{self.user.name}-volume',
                    'type': 'DirectoryOrCreate',
                },
            },
