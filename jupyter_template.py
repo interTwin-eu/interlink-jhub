@@ -17,7 +17,6 @@ import pprint
 import jwt
 
 import os
-from subprocess import check_call
 import asyncio
 
 import kubernetes_asyncio as k8s
@@ -72,8 +71,8 @@ class EnvAuthenticator(GenericOAuthenticator):
 
         amIAllowed = False
         
-        groups = jwt.decode(auth_state["access_token"], options={"verify_signature": False, "verify_aud": False})["wlcg.groups"]
-        groups = [s[1:] for s in groups]
+        groups = jwt.decode(auth_state["access_token"], options={"verify_signature": False, "verify_aud": False})["groups"]
+        #groups = [s[1:] for s in groups]
         
         if os.environ.get("OAUTH_GROUPS"):
             spawner.environment['GROUPS'] = " ".join(groups)
@@ -124,7 +123,8 @@ class EnvAuthenticator(GenericOAuthenticator):
                 return
 
         auth_state = self._create_auth_state(token_resp_json, user_data_resp_json)
-        groups = jwt.decode(auth_state["access_token"], options={"verify_signature": False, "verify_aud": False})["wlcg.groups"]
+        print("user info ", jwt.decode(auth_state["access_token"], options={"verify_signature": False, "verify_aud": False} ) )
+        groups = jwt.decode(auth_state["access_token"], options={"verify_signature": False, "verify_aud": False})["groups"]
                         
         is_admin = False
         if os.environ.get("ADMIN_OAUTH_GROUPS") in groups:
@@ -154,7 +154,7 @@ c.GenericOAuthenticator.client_secret = client_secret
 c.GenericOAuthenticator.authorize_url = iam_server.strip('/') + '/authorize'
 c.GenericOAuthenticator.token_url = iam_server.strip('/') + '/token'
 c.GenericOAuthenticator.userdata_url = iam_server.strip('/') + '/userinfo'
-c.GenericOAuthenticator.scope = ['openid', 'profile', 'email', 'address', 'offline_access', 'wlcg', 'wlcg.groups']
+c.GenericOAuthenticator.scope = ['openid', 'profile', 'email', 'address', 'offline_access', 'groups']
 c.GenericOAuthenticator.username_key = "preferred_username"
 c.GenericOAuthenticator.enable_auth_state = True
 
@@ -490,9 +490,12 @@ class CustomSpawner(kubespawner.KubeSpawner):
                 "JUPYTERHUB_SERVICE_URL": f"http://0.0.0.0:{self.port}",
                 "JUPYTERHUB_SERVER_NAME": "development",
                 "JUPYTERHUB_HOST": f"https://{jhub_host}:{jhub_port}",
-                "JUPYTERHUB_OAUTH_ACCESS_SCOPES": "none", # to understand if it is strictly necessary for slurm plugin to set this to none
-                "JUPYTERHUB_OAUTH_SCOPES": "none" # # to understand if it is strictly necessary for slurm plugin to set this to none
+                #"JUPYTERHUB_OAUTH_ACCESS_SCOPES": "none", # to understand if it is strictly necessary for slurm plugin to set this to none
+                #"JUPYTERHUB_OAUTH_SCOPES": "none" # # to understand if it is strictly necessary for slurm plugin to set this to none
                 }
+        
+        if 'poc' in self.image:
+            environment.update({"JUPYTERHUB_OAUTH_ACCESS_SCOPES": "none", "JUPYTERHUB_OAUTH_SCOPES": "none"})
 
         return environment
 
@@ -525,7 +528,7 @@ class CustomSpawner(kubespawner.KubeSpawner):
            {
                'name': f'{self.user.name}-volume',
                'hostPath': {
-                   'path': f'/opt/workspace/persistent-storage/{self.user.name}-volume',
+                   'path': f'/home/workspace/persistent-storage/{self.user.name}',
                    'type': 'DirectoryOrCreate',
                },
            },
@@ -558,6 +561,6 @@ c.KubeSpawner.extra_container_config = {
         }
 }
 
-c.KubeSpawner.http_timeout = 300
-c.KubeSpawner.start_timeout = 300
+c.KubeSpawner.http_timeout = 30
+c.KubeSpawner.start_timeout = 30
 #c.KubeSpawner.notebook_dir = "/home/jovyan"
