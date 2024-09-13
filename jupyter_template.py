@@ -273,9 +273,9 @@ class CustomSpawner(kubespawner.KubeSpawner):
         for node in vk_nodes:
             # append the node label to the list nodes_labels
             nodes_labels.append({ "hostname": node.metadata.name, "label": node.metadata.labels.get('accelerator', '')})
-            available_gpus += int(node.status.capacity.get('nvidia.com/gpu', 0))
 
             if node.metadata.labels.get('accelerator', '') == "T4" or "A200" in node.metadata.labels.get('accelerator', ''):
+                available_gpus += int(node.status.capacity.get('nvidia.com/gpu', 0))
                 if node.metadata.labels.get('accelerator', '') not in accelerator_labels:
                     accelerator_labels.append(node.metadata.labels.get('accelerator', ''))
                 self.map_node_gpu[node.metadata.labels.get('accelerator', '')] = { "hostname": node.metadata.name, "gpus": int(node.status.capacity.get('nvidia.com/gpu', 0))}
@@ -323,6 +323,8 @@ class CustomSpawner(kubespawner.KubeSpawner):
 
         if available_gpus > 0:
             options_to_return += f"<p>Total GPUs available: <b style='color: darkgreen;'>{available_gpus}</b></p>"
+        else:
+            options_to_return += f"<p>Total GPUs available: <b style='color: darkred;'>0</b></p>"
 
         if already_allocated_gpus > 0:
             options_to_return += f"<p>Used GPUs: <b style='color: darkred;'>{already_allocated_gpus}</b></p>"
