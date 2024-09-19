@@ -1,7 +1,7 @@
 persistentVolume:
   jhubVolume:
     name: helm-jhub-volume
-    path: /mnt/data/helm-jhub-volume
+    path: /tmp
     type: local
 
 services:

@@ -350,7 +350,7 @@ class CustomSpawner(kubespawner.KubeSpawner):
         options_to_return += '<label for="gpu">Select your desired number of GPUs:</label>'
         options_to_return += '<select name="gpu" size="1">'
 
-        for i in range(0, int(__GPU_CAP__)+1):
+        for i in range(0, int(available_gpus)+1):
             options_to_return += f'<option value="{i}">{i}</option>'
 
         options_to_return += "</select><br>"

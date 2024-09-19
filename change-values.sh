@@ -6,7 +6,9 @@ cp values_template.yaml values.yaml
 
 source .env
 
+# change those values with the ones you want
 HOSTNAME="jhub.131.154.98.62.myip.cloud.infn.it"
+VK_NODENAME='my-iam-node'
 
 # values inside jupyter_template.py
 IAM_SERVER="https://iam.cloud.infn.it"
@@ -14,8 +16,6 @@ CALLBACK_URL="https://$HOSTNAME:443/hub/oauth_callback"
 JHUB_HOST="$HOSTNAME"
 JHUB_PORT="443"
 JHUB_API_URL="https://$HOSTNAME/hub/api"
-VK_NODENAME='my-iam-node'
-GPU_CAP="2"
 
 sed -i "s|__CALLBACK_URL__|\"$CALLBACK_URL\"|g" jupyterhubcustomconfig.py
 sed -i "s|__IAM_SERVER__|\"$IAM_SERVER\"|g" jupyterhubcustomconfig.py
@@ -27,7 +27,6 @@ sed -i "s|__JHUB_IP__|\"$HOSTNAME\"|g" jupyterhubcustomconfig.py
 sed -i "s|__JHUB_PORT__|\"$JHUB_PORT\"|g" jupyterhubcustomconfig.py
 sed -i "s|__JHUB_API_URL__|\"$JHUB_API_URL\"|g" jupyterhubcustomconfig.py
 sed -i "s|__VK_NODENAME__|\"$VK_NODENAME\"|g" jupyterhubcustomconfig.py
-sed -i "s|__GPU_CAP__|\"$GPU_CAP\"|g" jupyterhubcustomconfig.py
 
 # values inside values.yaml
 JHUB_URL="https://$HOSTNAME:443"
