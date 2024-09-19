@@ -8,7 +8,6 @@ source .env
 
 # change those values with the ones you want
 HOSTNAME="jhub.131.154.98.62.myip.cloud.infn.it"
-VK_NODENAME='my-iam-node'
 
 # values inside jupyter_template.py
 IAM_SERVER="https://iam.cloud.infn.it"
@@ -26,7 +25,6 @@ sed -i "s|__JHUB_HOST__|\"$JHUB_HOST\"|g" jupyterhubcustomconfig.py
 sed -i "s|__JHUB_IP__|\"$HOSTNAME\"|g" jupyterhubcustomconfig.py
 sed -i "s|__JHUB_PORT__|\"$JHUB_PORT\"|g" jupyterhubcustomconfig.py
 sed -i "s|__JHUB_API_URL__|\"$JHUB_API_URL\"|g" jupyterhubcustomconfig.py
-sed -i "s|__VK_NODENAME__|\"$VK_NODENAME\"|g" jupyterhubcustomconfig.py
 
 # values inside values.yaml
 JHUB_URL="https://$HOSTNAME:443"
