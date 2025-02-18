@@ -140,11 +140,10 @@ class EnvAuthenticator(GenericOAuthenticator):
         }
 
 c.JupyterHub.tornado_settings = {'max_body_size': 1048576000, 'max_buffer_size': 1048576000}
-c.JupyterHub.log_level = 30
+c.JupyterHub.log_level = 10
 c.JupyterHub.hub_connect_ip = jhub_ip
 c.JupyterHub.api_url = jhub_api_url
 c.JupyterHub.cookie_secret = cookie_secret_bytes
-
 
 c.JupyterHub.authenticator_class = EnvAuthenticator
 c.Spawner.default_url = '/lab'
@@ -200,17 +199,17 @@ class CustomSpawner(kubespawner.KubeSpawner):
             #self.notebook_dir = "/home/jovyan"
         else: #self.image == "ghcr.io/dodas-ts/htc-dask-wn:v1.0.6-ml-infn-ssh-v5":
             args.extend([
-                "/opt/ssh/jupyterhub-singleuser"
+                "jupyterhub-singleuser"
             ])
             #self.notebook_dir = "/jupyter-workspace"
 
         # Add custom arguments
         args.extend([
-            "--ip=0.0.0.0",
-            "--port="+str(self.port),
-            "--SingleUserNotebookApp.default_url=/lab",
-            "--notebook-dir="+self.notebook_dir,
-            "--debug",
+            # "--ip=0.0.0.0",
+            # "--port="+str(self.port),
+            # "--SingleUserNotebookApp.default_url=/lab",
+            # "--notebook-dir="+self.notebook_dir,
+            # "--debug",
             "--allow-root"
         ])
 
@@ -343,9 +342,17 @@ class CustomSpawner(kubespawner.KubeSpawner):
         <label for="option4">/cvmfs/unpacked.infn.it/harbor.cloud.infn.it/unpacked/htc-dask-wn:v1.0.6-ml-infn-ssh-v5</label><br>
         <a href="https://github.com/DODAS-TS/dodas-docker-images" target="_blank">Source docker image from DODAS</a>
         <br>
-        <input type="radio" id="option5" name="img" value="jlab-fpga:0.1">
-        <label for="option5">jlab-fpga:0.1</label><br>
+        <input type="radio" id="option5" name="img" value="biancoj/jlab-fpga:0.2">
+        <label for="option5">biancoj/jlab-fpga:0.2</label><br>
         <a href="" target="_blank">Custom FPGA image</a>
+        <br>
+        <input type="radio" id="option6" name="img" value="jupyter/scipy-notebook:latest">
+        <label for="option6">jupyter/scipy-notebook:latest</label><br>
+        <a href="" target="_blank">Custom image</a>
+        <br>
+        <input type="radio" id="option7" name="img" value="ghcr.io/dciangot/dciangot/ray-ml:v0.1">
+        <label for="option7">ghcr.io/dciangot/dciangot/ray-ml:v0.1</label><br>
+        <a href="" target="_blank">Custom image</a>
         <br>
         <br>
 
@@ -618,15 +625,17 @@ class CustomSpawner(kubespawner.KubeSpawner):
                     "value": options['offload'],
                     "effect": "NoSchedule"
                 },
-                # {
-                #     "key": "virtual-node.interlink/no-schedule=false",
-                #     "value": "false",
-                #     "effect": "NoSchedule"
-                # }
+                {
+                    "key": "virtual-node.interlink/no-schedule",
+                    "value": "false",
+                    "effect": "NoSchedule"
+                }
             ]
             self.extra_resource_guarantees = {"nvidia.com/gpu": gpu}
             self.extra_resource_limits = {"nvidia.com/gpu": gpu} 
-        elif options['offload'] == 'U55C':
+            self.extra_annotations = {"interlink.eu/pod-vpn": "true"}
+
+        elif options['offload'] in [fpga['model'] for fpga in self.fpgas_model_known]:
             self.tolerations = [
                 {
                     "key": "accelerator",
@@ -709,18 +718,22 @@ class CustomSpawner(kubespawner.KubeSpawner):
 
     @property
     def environment(self):
-        # dciangot: create an ssh connection on a random port
-
         environment = {
-                "JUPYTERHUB_SINGLEUSER_EXTENSION": "0",
+                #"JUPYTERHUB_SINGLEUSER_EXTENSION": "0",
                 "JHUB_HOST": jhub_host,
                 "SSH_PORT": "31022",
                 "FWD_PORT": f"{self.port}",
                 "JUPYTERHUB_API_URL": jhub_api_url,
                 "JUPYTERHUB_ACTIVITY_URL": f"{jhub_api_url}/users/{self.user.name}/activity",
-                "JUPYTERHUB_SERVICE_URL": f"http://0.0.0.0:{self.port}",
-                "JUPYTERHUB_SERVER_NAME": "development",
+                #"JUPYTERHUB_SERVICE_URL": f"http://0.0.0.0:{self.port}",
                 "JUPYTERHUB_HOST": f"https://{jhub_host}:{jhub_port}",
+                "JUPYTERHUB_SERVICE_URL": jhub_host,
+                #"JUPYTERHUB_SERVER_NAME": "development",
+                #"JUPYTERHUB_OAUTH_SCOPES": f"users!user={self.user.name}",
+                #"JUPYTERHUB_OAUTH_ACCESS_SCOPES": f"users!user={self.user.name}",
+                #"JUPYTERHUB_OAUTH_CLIENT_ALLOWED_SCOPES": f"users!user={self.user.name}",
+                #"JUPYTERHUB_API_TOKEN": self.api_token,
+                #"JUPYTERHUB_SINGLEUSER_APP": 'notebook.notebookapp.NotebookApp',
                 #"JUPYTERHUB_OAUTH_ACCESS_SCOPES": "none", # to understand if it is strictly necessary for slurm plugin to set this to none
                 #"JUPYTERHUB_OAUTH_SCOPES": "none" # # to understand if it is strictly necessary for slurm plugin to set this to none
                 }
@@ -739,7 +752,7 @@ class CustomSpawner(kubespawner.KubeSpawner):
 
         if self.user_options.get('offload') in [gpu['model'] for gpu in self.gpus_model_known]:
             node_selector.update({"kubernetes.io/hostname" : self.map_node_gpu[self.user_options.get('offload')]["hostname"]})
-        elif self.user_options.get('offload')=="U55C":
+        elif self.user_options.get('offload') in [fpga['model'] for fpga in self.fpgas_model_known]:
             node_selector.update({"kubernetes.io/hostname" : self.map_node_fpga[self.user_options.get('offload')]["hostname"]})
 
         if self.user_options.get('offload')=="N":
@@ -770,6 +783,7 @@ class CustomSpawner(kubespawner.KubeSpawner):
 
 
 c.JupyterHub.spawner_class = CustomSpawner
+#c.JupyterHub.allow_named_servers = True
 c.KubeSpawner.cmd = [" "]
 c.KubeSpawner.args = [" "]
 c.KubeSpawner.delete_stopped_pods = False
@@ -778,7 +792,8 @@ c.KubeSpawner.allow_privilege_escalation = True
 c.KubeSpawner.extra_pod_config = {
     "automountServiceAccountToken": True,
         }
-        
+c.KubeSpawner.hub_connect_url = "https://"+jhub_host
+
 c.KubeSpawner.init_containers = []
 
 c.KubeSpawner.debug = True
@@ -797,4 +812,4 @@ c.KubeSpawner.extra_container_config = {
 
 c.KubeSpawner.http_timeout = 60
 c.KubeSpawner.start_timeout = 60
-#c.KubeSpawner.notebook_dir = "/home/jovyan"
+c.KubeSpawner.notebook_dir = "/home/jovyan"

@@ -6,7 +6,7 @@ cp values_template.yaml values.yaml
 
 source .env
 
-HOSTNAME="jhub.131.154.98.240.myip.cloud.infn.it"
+HOSTNAME="jhub.131.154.99.4.myip.cloud.infn.it"
 
 # values inside jupyter_template.py
 IAM_SERVER="https://iam.cloud.infn.it"
