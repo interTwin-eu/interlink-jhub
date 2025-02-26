@@ -146,7 +146,6 @@ c.JupyterHub.api_url = jhub_api_url
 c.JupyterHub.cookie_secret = cookie_secret_bytes
 
 c.JupyterHub.authenticator_class = EnvAuthenticator
-c.Spawner.default_url = '/lab'
 c.GenericOAuthenticator.oauth_callback_url = callback_url
 c.GenericOAuthenticator.client_id = client_id
 c.GenericOAuthenticator.client_secret = client_secret
@@ -601,7 +600,7 @@ class CustomSpawner(kubespawner.KubeSpawner):
         sock = socket.socket()
         sock.bind(('', 0))
 
-        self.port = sock.getsockname()[1]
+        self.port = 8888
 
         if options['offload'] == 'NO' or options['offload'] == 'none': 
             self.tolerations = [
@@ -610,12 +609,7 @@ class CustomSpawner(kubespawner.KubeSpawner):
                     "operator": "Equal",
                     "value": "none",
                     "effect": "NoSchedule"
-                },
-                # {
-                #     "key": "virtual-node.interlink/no-schedule=false",
-                #     "value": "false",
-                #     "effect": "NoSchedule"
-                # }
+                }
             ]
         elif options['offload'] in [gpu['model'] for gpu in self.gpus_model_known]:
             self.tolerations = [
@@ -643,14 +637,15 @@ class CustomSpawner(kubespawner.KubeSpawner):
                     "value": options['offload'],
                     "effect": "NoSchedule"
                 },
-                # {
-                #     "key": "virtual-node.interlink/no-schedule",
-                #     "value": "false",
-                #     "effect": "NoSchedule"
-                # }
+                {
+                    "key": "virtual-node.interlink/no-schedule",
+                    "value": "false",
+                    "effect": "NoSchedule"
+                }
             ]
             self.extra_resource_guarantees = {"xilinx.com/fpga": fpga}
             self.extra_resource_limits = {"xilinx.com/fpga": fpga}
+            self.extra_annotations = {"interlink.eu/pod-vpn": "true"}
         
         if 'poc' in options['offload']:
 
@@ -693,15 +688,15 @@ class CustomSpawner(kubespawner.KubeSpawner):
             owner_references=[owner_reference],
         )
 
-        service = V1Service(
-            kind='Service',
-            metadata=metadata,
-            spec=V1ServiceSpec(
-                type='ClusterIP',
-                ports=[V1ServicePort(name='http', port=self.port, target_port=self.port)],
-                selector={ "app": "jupyterhub",  "component": "hub", "release": "helm-jhub-release"}
-            ),
-        )
+        # service = V1Service(
+        #     kind='Service',
+        #     metadata=metadata,
+        #     spec=V1ServiceSpec(
+        #         type='ClusterIP',
+        #         ports=[V1ServicePort(name='http', port=self.port, target_port=self.port)],
+        #         selector={ "app": "jupyterhub",  "component": "hub", "release": "helm-jhub-release"}
+        #     ),
+        # )
 
         return service
     
@@ -716,39 +711,37 @@ class CustomSpawner(kubespawner.KubeSpawner):
         # Call the parent class's start method to actually start the notebook
         return await super().start()
 
-    @property
-    def environment(self):
-        environment = {
-                #"JUPYTERHUB_SINGLEUSER_EXTENSION": "0",
-                "JHUB_HOST": jhub_host,
-                "SSH_PORT": "31022",
-                "FWD_PORT": f"{self.port}",
-                "JUPYTERHUB_API_URL": jhub_api_url,
-                "JUPYTERHUB_ACTIVITY_URL": f"{jhub_api_url}/users/{self.user.name}/activity",
-                #"JUPYTERHUB_SERVICE_URL": f"http://0.0.0.0:{self.port}",
-                "JUPYTERHUB_HOST": f"https://{jhub_host}:{jhub_port}",
-                "JUPYTERHUB_SERVICE_URL": jhub_host,
-                #"JUPYTERHUB_SERVER_NAME": "development",
-                #"JUPYTERHUB_OAUTH_SCOPES": f"users!user={self.user.name}",
-                #"JUPYTERHUB_OAUTH_ACCESS_SCOPES": f"users!user={self.user.name}",
-                #"JUPYTERHUB_OAUTH_CLIENT_ALLOWED_SCOPES": f"users!user={self.user.name}",
-                #"JUPYTERHUB_API_TOKEN": self.api_token,
-                #"JUPYTERHUB_SINGLEUSER_APP": 'notebook.notebookapp.NotebookApp',
-                #"JUPYTERHUB_OAUTH_ACCESS_SCOPES": "none", # to understand if it is strictly necessary for slurm plugin to set this to none
-                #"JUPYTERHUB_OAUTH_SCOPES": "none" # # to understand if it is strictly necessary for slurm plugin to set this to none
-                }
+    # @property
+    # def environment(self):
+    #     environment = {
+    #             #"JUPYTERHUB_SINGLEUSER_EXTENSION": "0",
+    #             #"JHUB_HOST": jhub_host,
+    #             #"SSH_PORT": "31022",
+    #             #"FWD_PORT": f"{self.port}",
+    #             "JUPYTERHUB_API_URL": jhub_api_url,
+    #             "JUPYTERHUB_ACTIVITY_URL": f"{jhub_api_url}/users/{self.user.name}/activity",
+    #             #"JUPYTERHUB_SERVICE_URL": f"http://0.0.0.0:{self.port}",
+    #             "JUPYTERHUB_HOST": f"https://{jhub_host}:{jhub_port}",
+    #             "JUPYTERHUB_SERVICE_URL": jhub_host,
+    #             #"JUPYTERHUB_SERVER_NAME": "development",
+    #             #"JUPYTERHUB_OAUTH_SCOPES": f"users!user={self.user.name}",
+    #             #"JUPYTERHUB_OAUTH_ACCESS_SCOPES": f"users!user={self.user.name}",
+    #             #"JUPYTERHUB_OAUTH_CLIENT_ALLOWED_SCOPES": f"users!user={self.user.name}",
+    #             #"JUPYTERHUB_API_TOKEN": self.api_token,
+    #             #"JUPYTERHUB_SINGLEUSER_APP": 'notebook.notebookapp.NotebookApp',
+    #             #"JUPYTERHUB_OAUTH_ACCESS_SCOPES": "none", # to understand if it is strictly necessary for slurm plugin to set this to none
+    #             #"JUPYTERHUB_OAUTH_SCOPES": "none" # # to understand if it is strictly necessary for slurm plugin to set this to none
+    #             }
         
-        if 'poc' in self.image:
-            environment.update({"JUPYTERHUB_OAUTH_ACCESS_SCOPES": "none", "JUPYTERHUB_OAUTH_SCOPES": "none"})
+    #     if 'poc' in self.image:
+    #         environment.update({"JUPYTERHUB_OAUTH_ACCESS_SCOPES": "none", "JUPYTERHUB_OAUTH_SCOPES": "none"})
 
-        return environment
+    #     return environment
 
     @property
     def node_selector(self):
 
-        node_selector = { "kubernetes.io/role": "agent",
-                            "beta.kubernetes.io/os": "linux",
-                            "virtual-node.interlink/type" : "virtual-kubelet"}
+        node_selector = { "virtual-node.interlink/type" : "virtual-kubelet"}
 
         if self.user_options.get('offload') in [gpu['model'] for gpu in self.gpus_model_known]:
             node_selector.update({"kubernetes.io/hostname" : self.map_node_gpu[self.user_options.get('offload')]["hostname"]})
@@ -787,29 +780,8 @@ c.JupyterHub.spawner_class = CustomSpawner
 c.KubeSpawner.cmd = [" "]
 c.KubeSpawner.args = [" "]
 c.KubeSpawner.delete_stopped_pods = False
-c.KubeSpawner.privileged = True
-c.KubeSpawner.allow_privilege_escalation = True
-c.KubeSpawner.extra_pod_config = {
-    "automountServiceAccountToken": True,
-        }
 c.KubeSpawner.hub_connect_url = "https://"+jhub_host
 
-c.KubeSpawner.init_containers = []
-
 c.KubeSpawner.debug = True
-
-c.KubeSpawner.services_enabled = True
-c.KubeSpawner.extra_labels = { "app": "jupyterhub",  "component": "hub", "release": "helm-jhub-release"}
-
-c.KubeSpawner.extra_container_config = {
-    "securityContext": {
-            "privileged": True,
-            "capabilities": {
-                        "add": ["SYS_ADMIN"]
-                    }
-        }
-}
-
 c.KubeSpawner.http_timeout = 60
 c.KubeSpawner.start_timeout = 60
-c.KubeSpawner.notebook_dir = "/home/jovyan"
