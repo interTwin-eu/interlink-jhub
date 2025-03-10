@@ -4,15 +4,6 @@ persistentVolume:
     path: /tmp
     type: local
 
-services:
-  sshFwd:
-    name: ssh-fwd
-    type: NodePort
-    port: 8022
-    nodePort: 31022
-    protocol: TCP
-    release: __RELEASE__
-
 hostname: __JHUB_HOSTNAME__
 ingress: false 
 jupyterhub:
@@ -33,8 +24,6 @@ jupyterhub:
     image:
       name: biancoj/jhub-asyncio
       tag: 5.0.0
-      # name: biancoj/jhub-asyncio
-      # tag: 0.1.3
     cookieSecret: __COOKIE_SECRET__
     extraVolumes:
       - name: jhub-config
@@ -56,13 +45,9 @@ jupyterhub:
     - /usr/local/etc/jupyterhub/jupyterhub_config.py
     - --upgrade-db
     extraEnv:
-      ACCESS_TOKEN: eyJraWQiOiJyc2ExIiwiYWxnIjoiUlMyNTYifQ.eyJzdWIiOiIxZTcwNzRlNS05NmZlLTQzZTgtODgxZC00ZDU3MmMxMjg5MzEiLCJpc3MiOiJodHRwczpcL1wvZG9kYXMtaWFtLmNsb3VkLmNuYWYuaW5mbi5pdFwvIiwiZ3JvdXBzIjpbInVzZXJzIiwibWxhYXMiLCJBTVMiLCJDTVMiLCJqdXB5dGVyLXRlc3Rlci1hZG1pbiJdLCJwcmVmZXJyZWRfdXNlcm5hbWUiOiJkY2lhbmdvdCIsIm9yZ2FuaXNhdGlvbl9uYW1lIjoiZG9kYXMiLCJjbGllbnRfaWQiOiJvaWRjLWRjaWFuZ290LWRlc2t0b3AiLCJuYmYiOjE2MzI0MjM5NDksInNjb3BlIjoiYWRkcmVzcyBwaG9uZSBvcGVuaWQgb2ZmbGluZV9hY2Nlc3MgcHJvZmlsZSBlbWFpbCIsIm5hbWUiOiJEaWVnbyBDaWFuZ290dGluaSIsImV4cCI6MTYzMjQyNzU0OSwiaWF0IjoxNjMyNDIzOTQ5LCJqdGkiOiI0MTM2OGU2NS0wYWYxLTQ1YzctYWIzOS00NTVhOGJjMjUxMjAiLCJlbWFpbCI6ImRpZWdvLmNpYW5nb3R0aW5pQHBnLmluZm4uaXQifQ.EY0RVhdvpO0xeJ3lT33jQ_kt9i92UMZdgpinyEaxB4z-5HTmLoj1QKTZBrQmwtw_KRtIswdWlwfIMdaO5J5iw8rZChmN_5Qx9FBDTrjhWABaBORg1_ioTiBP9WpRgBZJlMcX2DzjFb7JNiDmKuEI6BCgU_O8V41GHXHPgGWAKGs
       OAUTH_CALLBACK_URL: __CALLBACK_URL__
       OAUTH_ENDPOINT: __IAM_SERVER__
       OAUTH_GROUPS: users
-      SSH_NAMESPACE: __NAMESPACE__
-      TUNNEL_SERVICE_PORT: "31022"
-      JUPYTERHUB_CRYPT_KEY: "4145ad1272fef975ae88bf90bb55471dcb211d7974c327a2a0e78b0b0d4e4452"
   ingress:
     enabled: false 
   proxy:

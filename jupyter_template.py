@@ -204,11 +204,6 @@ class CustomSpawner(kubespawner.KubeSpawner):
 
         # Add custom arguments
         args.extend([
-            # "--ip=0.0.0.0",
-            # "--port="+str(self.port),
-            # "--SingleUserNotebookApp.default_url=/lab",
-            # "--notebook-dir="+self.notebook_dir,
-            # "--debug",
             "--allow-root"
         ])
 
@@ -781,7 +776,6 @@ c.KubeSpawner.cmd = [" "]
 c.KubeSpawner.args = [" "]
 c.KubeSpawner.delete_stopped_pods = False
 c.KubeSpawner.hub_connect_url = "https://"+jhub_host
-
 c.KubeSpawner.debug = True
 c.KubeSpawner.http_timeout = 60
 c.KubeSpawner.start_timeout = 60
