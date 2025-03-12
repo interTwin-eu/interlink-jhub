@@ -15,8 +15,10 @@ JHUB_HOST="$HOSTNAME"
 JHUB_PORT="443"
 JHUB_API_URL="https://$HOSTNAME/hub/api"
 VK_NODENAME='gpu-node'
-GPU_CAP="1"
-FPGA_CAP="1"
+CPU_USER_LIMIT="1" # `1` means 1 CPU
+GPU_USER_LIMIT="1" # `1` means 1 GPU
+FPGA_USER_LIMIT="1" # `1` means 1 FPGA
+MEM_USER_LIMIT="2" # `2` means 2 GB
 
 sed -i "s|__CALLBACK_URL__|\"$CALLBACK_URL\"|g" jupyterhubcustomconfig.py
 sed -i "s|__IAM_SERVER__|\"$IAM_SERVER\"|g" jupyterhubcustomconfig.py
@@ -28,8 +30,10 @@ sed -i "s|__JHUB_IP__|\"$HOSTNAME\"|g" jupyterhubcustomconfig.py
 sed -i "s|__JHUB_PORT__|\"$JHUB_PORT\"|g" jupyterhubcustomconfig.py
 sed -i "s|__JHUB_API_URL__|\"$JHUB_API_URL\"|g" jupyterhubcustomconfig.py
 sed -i "s|__VK_NODENAME__|\"$VK_NODENAME\"|g" jupyterhubcustomconfig.py
-sed -i "s|__GPU_CAP__|\"$GPU_CAP\"|g" jupyterhubcustomconfig.py
-sed -i "s|__FPGA_CAP__|\"$FPGA_CAP\"|g" jupyterhubcustomconfig.py
+sed -i "s|__CPU_USER_LIMIT__|$CPU_USER_LIMIT|g" jupyterhubcustomconfig.py
+sed -i "s|__GPU_USER_LIMIT__|$GPU_USER_LIMIT|g" jupyterhubcustomconfig.py
+sed -i "s|__FPGA_USER_LIMIT__|$FPGA_USER_LIMIT|g" jupyterhubcustomconfig.py
+sed -i "s|__MEM_USER_LIMIT__|$MEM_USER_LIMIT|g" jupyterhubcustomconfig.py
 
 # values inside values.yaml
 JHUB_URL="https://$HOSTNAME:443"

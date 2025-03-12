@@ -186,6 +186,12 @@ class CustomSpawner(kubespawner.KubeSpawner):
                 "image_url": "https://www.colfaxdirect.com/store/pc/catalog/u55c.png"
             }
         ]
+        self.cpu_user_limit = __CPU_USER_LIMIT__
+        self.gpu_user_limit = __GPU_USER_LIMIT__
+        self.fpga_user_limit = __FPGA_USER_LIMIT__
+        self.memory_user_limit = __MEM_USER_LIMIT__
+        self.gpu_user_requested = 0
+        self.fpga_user_requested = 0
 
     def get_args(self):
         # Get the default arguments
@@ -697,6 +703,24 @@ class CustomSpawner(kubespawner.KubeSpawner):
     
     async def custom_function(self):
         print("Running custom function before starting the notebook server")
+        if self.cpu_guarantee > self.cpu_user_limit:
+            message = f"CPU limit exceeded. You requested {self.cpu_guarantee} CPUs, but the maximum allowed is {self.cpu_user_limit}"
+            self.log.error(message)
+            self.user.server_info["message"] = message
+            raise Exception(message)
+
+        if self.gpu_user_requested > self.gpu_user_limit:
+            message = f"GPU limit exceeded. You requested {self.gpu_user_requested} GPUs, but the maximum allowed is {self.gpu_user_limit}"
+            self.log.error(message)
+            self.user.server_info["message"] = message
+            raise Exception(message)
+
+        if self.fpga_user_requested > self.fpga_user_limit:
+            message = f"FPGA limit exceeded. You requested {self.fpga_user_requested} FPGAs, but the maximum allowed is {self.fpga_user_limit}"
+            self.log.error(message)
+            self.user.server_info["message"] = message
+            raise Exception(message)
+
         await asyncio.sleep(1)  # Simulating some async operation
         
     async def start(self):
@@ -705,33 +729,6 @@ class CustomSpawner(kubespawner.KubeSpawner):
         
         # Call the parent class's start method to actually start the notebook
         return await super().start()
-
-    # @property
-    # def environment(self):
-    #     environment = {
-    #             #"JUPYTERHUB_SINGLEUSER_EXTENSION": "0",
-    #             #"JHUB_HOST": jhub_host,
-    #             #"SSH_PORT": "31022",
-    #             #"FWD_PORT": f"{self.port}",
-    #             "JUPYTERHUB_API_URL": jhub_api_url,
-    #             "JUPYTERHUB_ACTIVITY_URL": f"{jhub_api_url}/users/{self.user.name}/activity",
-    #             #"JUPYTERHUB_SERVICE_URL": f"http://0.0.0.0:{self.port}",
-    #             "JUPYTERHUB_HOST": f"https://{jhub_host}:{jhub_port}",
-    #             "JUPYTERHUB_SERVICE_URL": jhub_host,
-    #             #"JUPYTERHUB_SERVER_NAME": "development",
-    #             #"JUPYTERHUB_OAUTH_SCOPES": f"users!user={self.user.name}",
-    #             #"JUPYTERHUB_OAUTH_ACCESS_SCOPES": f"users!user={self.user.name}",
-    #             #"JUPYTERHUB_OAUTH_CLIENT_ALLOWED_SCOPES": f"users!user={self.user.name}",
-    #             #"JUPYTERHUB_API_TOKEN": self.api_token,
-    #             #"JUPYTERHUB_SINGLEUSER_APP": 'notebook.notebookapp.NotebookApp',
-    #             #"JUPYTERHUB_OAUTH_ACCESS_SCOPES": "none", # to understand if it is strictly necessary for slurm plugin to set this to none
-    #             #"JUPYTERHUB_OAUTH_SCOPES": "none" # # to understand if it is strictly necessary for slurm plugin to set this to none
-    #             }
-        
-    #     if 'poc' in self.image:
-    #         environment.update({"JUPYTERHUB_OAUTH_ACCESS_SCOPES": "none", "JUPYTERHUB_OAUTH_SCOPES": "none"})
-
-    #     return environment
 
     @property
     def node_selector(self):
