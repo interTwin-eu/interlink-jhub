@@ -324,41 +324,102 @@ class CustomSpawner(kubespawner.KubeSpawner):
             if (clickedButton) clickedButton.classList.add('selected');
         }
         </script>
-        <label for="stack">Select your desired image:</label>
+        <label for="stack"><b>Select your desired image:</b></label>
         <br>
-        <input type="radio" id="option1" name="img" value="ghcr.io/dodas-ts/htc-dask-wn:v1.0.6-ml-infn-ssh-v5">
-        <label for="option1">ghcr.io/dodas-ts/htc-dask-wn:v1.0.6-ml-infn-ssh-v5</label><br>
-        <a href="https://github.com/DODAS-TS/dodas-docker-images" target="_blank">Source docker image from DODAS</a>
-        <br>
-        <input type="radio" id="option2" name="img" value="biancoj/jlab-ai">
-        <label for="option2">biancoj/jlab-ai</label><br>
-        <a href="https://github.com/landerlini/ai-infn-platform/tree/main/docker" target="_blank">Source docker image (from ai-infn platform)</a>
-        <br>
-        <input type="radio" id="option3" name="img" value="/cvmfs/datacloud.infn.it/test/jlab-ssh">
-        <label for="option3">/cvmfs/datacloud.infn.it/test/jlab-ssh</label><br>
-        <a href="https://github.com/DODAS-TS/dodas-docker-images" target="_blank">Source docker image from DODAS</a>
-        <br>
-        <input type="radio" id="option4" name="img" value="/cvmfs/unpacked.infn.it/harbor.cloud.infn.it/unpacked/htc-dask-wn:v1.0.6-ml-infn-ssh-v5">
-        <label for="option4">/cvmfs/unpacked.infn.it/harbor.cloud.infn.it/unpacked/htc-dask-wn:v1.0.6-ml-infn-ssh-v5</label><br>
-        <a href="https://github.com/DODAS-TS/dodas-docker-images" target="_blank">Source docker image from DODAS</a>
-        <br>
-        <input type="radio" id="option5" name="img" value="biancoj/jlab-fpga:0.2">
-        <label for="option5">biancoj/jlab-fpga:0.2</label><br>
-        <a href="" target="_blank">Custom FPGA image</a>
-        <br>
-        <input type="radio" id="option6" name="img" value="jupyter/scipy-notebook:latest">
-        <label for="option6">jupyter/scipy-notebook:latest</label><br>
-        <a href="" target="_blank">Custom image</a>
-        <br>
-        <input type="radio" id="option7" name="img" value="ghcr.io/dciangot/dciangot/ray-ml:v0.1">
-        <label for="option7">ghcr.io/dciangot/dciangot/ray-ml:v0.1</label><br>
-        <a href="" target="_blank">Custom image</a>
-        <br>
-        <br>
+        """
+        # <br>
+        # <input type="radio" id="option1" name="img" value="ghcr.io/dodas-ts/htc-dask-wn:v1.0.6-ml-infn-ssh-v5">
+        # <label for="option1">ghcr.io/dodas-ts/htc-dask-wn:v1.0.6-ml-infn-ssh-v5</label><br>
+        # <a href="https://github.com/DODAS-TS/dodas-docker-images" target="_blank">Source docker image from DODAS</a>
+        # <br>
+        # <input type="radio" id="option2" name="img" value="biancoj/jlab-ai">
+        # <label for="option2">biancoj/jlab-ai</label><br>
+        # <a href="https://github.com/landerlini/ai-infn-platform/tree/main/docker" target="_blank">Source docker image (from ai-infn platform)</a>
+        # <br>
+        # <input type="radio" id="option3" name="img" value="/cvmfs/datacloud.infn.it/test/jlab-ssh">
+        # <label for="option3">/cvmfs/datacloud.infn.it/test/jlab-ssh</label><br>
+        # <a href="https://github.com/DODAS-TS/dodas-docker-images" target="_blank">Source docker image from DODAS</a>
+        # <br>
+        # <input type="radio" id="option4" name="img" value="/cvmfs/unpacked.infn.it/harbor.cloud.infn.it/unpacked/htc-dask-wn:v1.0.6-ml-infn-ssh-v5">
+        # <label for="option4">/cvmfs/unpacked.infn.it/harbor.cloud.infn.it/unpacked/htc-dask-wn:v1.0.6-ml-infn-ssh-v5</label><br>
+        # <a href="https://github.com/DODAS-TS/dodas-docker-images" target="_blank">Source docker image from DODAS</a>
+        # <br>
+        # <input type="radio" id="option5" name="img" value="biancoj/jlab-fpga:0.2">
+        # <label for="option5">biancoj/jlab-fpga:0.2</label><br>
+        # <a href="" target="_blank">Custom FPGA image</a>
+        # <br>
+        # <input type="radio" id="option6" name="img" value="jupyter/scipy-notebook:latest">
+        # <label for="option6">jupyter/scipy-notebook:latest</label><br>
+        # <a href="" target="_blank">Custom image</a>
+        # <br>
+        # <input type="radio" id="option7" name="img" value="ghcr.io/dciangot/dciangot/ray-ml:v0.1">
+        # <label for="option7">ghcr.io/dciangot/dciangot/ray-ml:v0.1</label><br>
+        # <a href="" target="_blank">Custom image</a>
+        # <br>
+        # <br>
 
+        # <div style="text-align: center;">
+        # <label for="cpu" style="font-size: 1em; margin-bottom: 5px; font-weight: bold; display: inline-block;">
+        #     CPUs
+        # </label>
+        # <div id="cpu">
+        #     <button type="button" onclick="setCpu(1, this)" class="cpu-button">1</button>
+        #     <button type="button" onclick="setCpu(2, this)" class="cpu-button">2</button>
+        #     <button type="button" onclick="setCpu(4, this)" class="cpu-button">4</button>
+        #     <button type="button" onclick="setCpu(8, this)" class="cpu-button">8</button>
+        # </div>
+        # </div>
+        # <select name="cpu" id="cpu-select" size="1" style="display: none;">
+        # <option value="1">1</option>
+        # <option value="2">2</option>
+        # <option value="4">4</option>
+        # <option value="8">8</option>
+        # </select>
+        # <br>
+        # <div style="text-align: center;">
+        # <label for="mem" style="font-size: 1em; margin-bottom: 5px; font-weight: bold; display: inline-block;">
+        #     RAM
+        # </label>
+        # <div id="mem">
+        #     <button type="button" onclick="setMemory('2G', this)" class="memory-button">2GB</button>
+        #     <button type="button" onclick="setMemory('4G', this)" class="memory-button">4GB</button>
+        #     <button type="button" onclick="setMemory('8G', this)" class="memory-button">8GB</button>
+        #     <button type="button" onclick="setMemory('16G', this)" class="memory-button">16GB</button>
+        #     <button type="button" onclick="setMemory('32G', this)" class="memory-button">32GB</button>
+        #     <button type="button" onclick="setMemory('64G', this)" class="memory-button">64GB</button>
+        # </div>
+        # </div>
+        # <select name="mem" id="mem-select" size="1" style="display: none;">
+        # <option value="2G">2GB</option>
+        # <option value="4G">4GB</option>
+        # <option value="8G">8GB</option>
+        # <option value="16G">16GB</option>
+        # <option value="32G">32GB</option>
+        # <option value="64G">64GB</option>
+        # </select>
+        # <br>
+        # <br>
+        # """
+
+        jlab_images_str = os.environ.get("JLAB_IMAGES")
+        try:
+            jlab_images = json.loads(jlab_images_str)
+        except json.JSONDecodeError:
+            jlab_images = []
+
+        for i in range(len(jlab_images)):
+            options_to_return += f"""
+            <input type="radio" id="option{i}" name="img" value="{jlab_images[i]['name']}:{jlab_images[i]['tag']}">
+            <label for="option{i}">{jlab_images[i]['name']}:{jlab_images[i]['tag']}</label><br>
+            <span>{jlab_images[i]['description']}"</span>
+            <br>
+            <br>
+            """
+
+        options_to_return += """
         <div style="text-align: center;">
         <label for="cpu" style="font-size: 1em; margin-bottom: 5px; font-weight: bold; display: inline-block;">
-            CPUs
+            How many CPUs do you need?
         </label>
         <div id="cpu">
             <button type="button" onclick="setCpu(1, this)" class="cpu-button">1</button>
@@ -376,7 +437,7 @@ class CustomSpawner(kubespawner.KubeSpawner):
         <br>
         <div style="text-align: center;">
         <label for="mem" style="font-size: 1em; margin-bottom: 5px; font-weight: bold; display: inline-block;">
-            RAM
+            How much RAM do you need?
         </label>
         <div id="mem">
             <button type="button" onclick="setMemory('2G', this)" class="memory-button">2GB</button>
@@ -455,6 +516,13 @@ class CustomSpawner(kubespawner.KubeSpawner):
                             already_allocated_fpgas += int(container.resources.limits['xilinx.com/fpga'])
             except Exception as e:
                 pass
+        
+
+        if not self.gpus_status and not self.fpga_status:
+            options_to_return += "<p>No GPUs or FPGAs available</p>"
+            return options_to_return
+        else:
+            options_to_return += "<p><b>Available accelerators:</b></p>"
         
         if self.gpus_status:
             options_to_return += '<table style="width:100%">'

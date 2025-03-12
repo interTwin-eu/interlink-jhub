@@ -5,7 +5,17 @@ persistentVolume:
     type: local
 
 hostname: __JHUB_HOSTNAME__
-ingress: false 
+ingress: false
+jlabimages:
+  - name: biancoj/jlab-fpga
+    tag: 0.2
+    description: "JupyterLab with FPGA tools"
+  - name: jupyter/scipy-notebook
+    tag: latest
+    description: "Jupyter Notebook with Python 3, R, and Julia"
+  - name: jupyter/tensorflow-notebook
+    tag: 3.0.16
+    description: "Jupyter Notebook with Python 3 and TensorFlow"
 jupyterhub:
   cull:
     enabled: true 
@@ -47,7 +57,17 @@ jupyterhub:
     extraEnv:
       OAUTH_CALLBACK_URL: __CALLBACK_URL__
       OAUTH_ENDPOINT: __IAM_SERVER__
-      OAUTH_GROUPS: users 
+      OAUTH_GROUPS: users
+      JLAB_IMAGES: |
+        [
+          {"name": "biancoj/jlab-fpga", "tag": "0.2", "description": "JupyterLab with FPGA tools"},
+          {"name": "jupyter/scipy-notebook", "tag": "latest", "description": "Jupyter Notebook with Python 3, R, and Julia"},
+          {"name": "jupyter/tensorflow-notebook", "tag": "3.0.16", "description": "Jupyter Notebook with Python 3 and TensorFlow"}
+        ]
+      CPU_USER_LIMIT: "8" # in cores
+      GPU_USER_LIMIT: "1"
+      FPGA_USER_LIMIT: "1"
+      MEMORY_USER_LIMIT: "16" # in GB
   ingress:
     enabled: false 
   proxy:
