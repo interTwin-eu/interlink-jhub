@@ -401,7 +401,7 @@ class CustomSpawner(kubespawner.KubeSpawner):
 
         nest_asyncio.apply()
         nodes = asyncio.run(self._get_nodes())
-        vk_nodes = [node for node in nodes if node.metadata.labels.get('virtual-node.interlink/type') == 'virtual-kubelet']
+        vk_nodes = [node for node in nodes if node.metadata.labels.get('virtual-node.interlink/type') == 'virtual-kubelet' and any(condition.type == 'Ready' and condition.status == 'True' for condition in node.status.conditions)]
 
         nodes_labels = []
         accelerator_labels = []
