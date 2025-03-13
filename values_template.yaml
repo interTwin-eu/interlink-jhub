@@ -64,10 +64,10 @@ jupyterhub:
           {"name": "jupyter/scipy-notebook", "tag": "latest", "description": "Jupyter Notebook with Python 3, R, and Julia"},
           {"name": "jupyter/tensorflow-notebook", "tag": "3.0.16", "description": "Jupyter Notebook with Python 3 and TensorFlow"}
         ]
-      CPU_USER_LIMIT: "8" # in cores
+      CPU_USER_LIMIT: "4"
       GPU_USER_LIMIT: "1"
       FPGA_USER_LIMIT: "1"
-      MEMORY_USER_LIMIT: "16" # in GB
+      MEMORY_USER_LIMIT: "8"
   ingress:
     enabled: false 
   proxy:

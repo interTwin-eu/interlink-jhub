@@ -186,10 +186,6 @@ class CustomSpawner(kubespawner.KubeSpawner):
                 "image_url": "https://www.colfaxdirect.com/store/pc/catalog/u55c.png"
             }
         ]
-        self.cpu_user_limit = __CPU_USER_LIMIT__
-        self.gpu_user_limit = __GPU_USER_LIMIT__
-        self.fpga_user_limit = __FPGA_USER_LIMIT__
-        self.memory_user_limit = __MEM_USER_LIMIT__
         self.gpu_user_requested = 0
         self.fpga_user_requested = 0
 
@@ -327,79 +323,6 @@ class CustomSpawner(kubespawner.KubeSpawner):
         <label for="stack"><b>Select your desired image:</b></label>
         <br>
         """
-        # <br>
-        # <input type="radio" id="option1" name="img" value="ghcr.io/dodas-ts/htc-dask-wn:v1.0.6-ml-infn-ssh-v5">
-        # <label for="option1">ghcr.io/dodas-ts/htc-dask-wn:v1.0.6-ml-infn-ssh-v5</label><br>
-        # <a href="https://github.com/DODAS-TS/dodas-docker-images" target="_blank">Source docker image from DODAS</a>
-        # <br>
-        # <input type="radio" id="option2" name="img" value="biancoj/jlab-ai">
-        # <label for="option2">biancoj/jlab-ai</label><br>
-        # <a href="https://github.com/landerlini/ai-infn-platform/tree/main/docker" target="_blank">Source docker image (from ai-infn platform)</a>
-        # <br>
-        # <input type="radio" id="option3" name="img" value="/cvmfs/datacloud.infn.it/test/jlab-ssh">
-        # <label for="option3">/cvmfs/datacloud.infn.it/test/jlab-ssh</label><br>
-        # <a href="https://github.com/DODAS-TS/dodas-docker-images" target="_blank">Source docker image from DODAS</a>
-        # <br>
-        # <input type="radio" id="option4" name="img" value="/cvmfs/unpacked.infn.it/harbor.cloud.infn.it/unpacked/htc-dask-wn:v1.0.6-ml-infn-ssh-v5">
-        # <label for="option4">/cvmfs/unpacked.infn.it/harbor.cloud.infn.it/unpacked/htc-dask-wn:v1.0.6-ml-infn-ssh-v5</label><br>
-        # <a href="https://github.com/DODAS-TS/dodas-docker-images" target="_blank">Source docker image from DODAS</a>
-        # <br>
-        # <input type="radio" id="option5" name="img" value="biancoj/jlab-fpga:0.2">
-        # <label for="option5">biancoj/jlab-fpga:0.2</label><br>
-        # <a href="" target="_blank">Custom FPGA image</a>
-        # <br>
-        # <input type="radio" id="option6" name="img" value="jupyter/scipy-notebook:latest">
-        # <label for="option6">jupyter/scipy-notebook:latest</label><br>
-        # <a href="" target="_blank">Custom image</a>
-        # <br>
-        # <input type="radio" id="option7" name="img" value="ghcr.io/dciangot/dciangot/ray-ml:v0.1">
-        # <label for="option7">ghcr.io/dciangot/dciangot/ray-ml:v0.1</label><br>
-        # <a href="" target="_blank">Custom image</a>
-        # <br>
-        # <br>
-
-        # <div style="text-align: center;">
-        # <label for="cpu" style="font-size: 1em; margin-bottom: 5px; font-weight: bold; display: inline-block;">
-        #     CPUs
-        # </label>
-        # <div id="cpu">
-        #     <button type="button" onclick="setCpu(1, this)" class="cpu-button">1</button>
-        #     <button type="button" onclick="setCpu(2, this)" class="cpu-button">2</button>
-        #     <button type="button" onclick="setCpu(4, this)" class="cpu-button">4</button>
-        #     <button type="button" onclick="setCpu(8, this)" class="cpu-button">8</button>
-        # </div>
-        # </div>
-        # <select name="cpu" id="cpu-select" size="1" style="display: none;">
-        # <option value="1">1</option>
-        # <option value="2">2</option>
-        # <option value="4">4</option>
-        # <option value="8">8</option>
-        # </select>
-        # <br>
-        # <div style="text-align: center;">
-        # <label for="mem" style="font-size: 1em; margin-bottom: 5px; font-weight: bold; display: inline-block;">
-        #     RAM
-        # </label>
-        # <div id="mem">
-        #     <button type="button" onclick="setMemory('2G', this)" class="memory-button">2GB</button>
-        #     <button type="button" onclick="setMemory('4G', this)" class="memory-button">4GB</button>
-        #     <button type="button" onclick="setMemory('8G', this)" class="memory-button">8GB</button>
-        #     <button type="button" onclick="setMemory('16G', this)" class="memory-button">16GB</button>
-        #     <button type="button" onclick="setMemory('32G', this)" class="memory-button">32GB</button>
-        #     <button type="button" onclick="setMemory('64G', this)" class="memory-button">64GB</button>
-        # </div>
-        # </div>
-        # <select name="mem" id="mem-select" size="1" style="display: none;">
-        # <option value="2G">2GB</option>
-        # <option value="4G">4GB</option>
-        # <option value="8G">8GB</option>
-        # <option value="16G">16GB</option>
-        # <option value="32G">32GB</option>
-        # <option value="64G">64GB</option>
-        # </select>
-        # <br>
-        # <br>
-        # """
 
         jlab_images_str = os.environ.get("JLAB_IMAGES")
         try:
@@ -661,10 +584,12 @@ class CustomSpawner(kubespawner.KubeSpawner):
         if 'gpu' in formdata:
             options['gpu'] = formdata['gpu']
             gpu = ''.join(formdata['gpu'])
+            self.gpu_user_requested = int(gpu)
 
         if 'fpga' in formdata:
             options['fpga'] = formdata['fpga']
             fpga = ''.join(formdata['fpga'])
+            self.fpga_user_requested = int(fpga)
 
         sock = socket.socket()
         sock.bind(('', 0))
@@ -771,6 +696,15 @@ class CustomSpawner(kubespawner.KubeSpawner):
     
     async def custom_function(self):
         print("Running custom function before starting the notebook server")
+
+        self.cpu_user_limit = int(os.environ.get("CPU_USER_LIMIT", 8))
+        self.gpu_user_limit = int(os.environ.get("GPU_USER_LIMIT", 0))
+        self.fpga_user_limit = int(os.environ.get("FPGA_USER_LIMIT", 0))
+        self.memory_user_limit = int(os.environ.get("MEMORY_USER_LIMIT", 16))
+
+        print(f"User {self.user.name} requested {self.cpu_guarantee} CPUs, {self.gpu_user_requested} GPUs, {self.fpga_user_requested} FPGAs and {self.mem_guarantee} of memory")
+        print(f"User {self.user.name} has a limit of {self.cpu_user_limit} CPUs, {self.gpu_user_limit} GPUs, {self.fpga_user_limit} FPGAs and {self.memory_user_limit} of memory")
+
         if self.cpu_guarantee > self.cpu_user_limit:
             message = f"CPU limit exceeded. You requested {self.cpu_guarantee} CPUs, but the maximum allowed is {self.cpu_user_limit}"
             self.log.error(message)
